@@ -43,6 +43,7 @@ function subirColinaEstocastico() {
         if (novosConflitos < conflitosAtuais) {
             estadoAtual = novoEstado;
             conflitosAtuais = novosConflitos;
+            iterations = 0;
         }
         iterations++;
     }
