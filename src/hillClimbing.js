@@ -1,94 +1,87 @@
-import { calcularMedia, calcularDesvioPadrao, mostrarTabuleiro, calcularConflitos } from "./util.js";
-
-class RecozimentoSimulado {
-  constructor(temperaturaInicial, taxaResfriamento) {
-    this.temperaturaInicial = temperaturaInicial;
-    this.taxaResfriamento = taxaResfriamento;
+function gerarTabuleiroAleatorio() {
+  const tabuleiro = [];
+  for (let i = 0; i < 8; i++) {
+      tabuleiro.push(Math.floor(Math.random() * 8));
   }
-
-  obterVizinhoAleatorio(tabuleiro) {
-    const vizinho = [...tabuleiro];
-    const coluna = Math.floor(Math.random() * 8);
-    let novaLinha;
-    do {
-      novaLinha = Math.floor(Math.random() * 8);
-    } while (novaLinha === vizinho[coluna]);
-    vizinho[coluna] = novaLinha;
-    return vizinho;
-  }
-
-  probabilidadeAceitacao(conflitosAtuais, conflitosVizinho, temperatura) {
-    if (conflitosVizinho < conflitosAtuais) {
-      return 1.0;
-    }
-    return Math.exp((conflitosAtuais - conflitosVizinho) / temperatura);
-  }
-
-  resolver() {
-    let tabuleiro = Array.from({ length: 8 }, () => Math.floor(Math.random() * 8));
-    let conflitosAtuais = calcularConflitos(tabuleiro);
-    let temperatura = this.temperaturaInicial;
-    let iteracoes = 0;
-
-    while (temperatura > 1) {
-      if (conflitosAtuais === 0) {
-        break;
-      }
-
-      const vizinho = this.obterVizinhoAleatorio(tabuleiro);
-      const conflitosVizinho = calcularConflitos(vizinho);
-
-      if (Math.random() < this.probabilidadeAceitacao(conflitosAtuais, conflitosVizinho, temperatura)) {
-        tabuleiro = vizinho;
-        conflitosAtuais = conflitosVizinho;
-      }
-
-      temperatura *= this.taxaResfriamento;
-      iteracoes++;
-    }
-
-    return { tabuleiro, iteracoes };
-  }
-}
-  
-  
-const numExecucoes = 50;
-const resultados = [];
-const temposExecucao = [];
-const iteracoesNecessarias = [];
-
-const sa = new RecozimentoSimulado(100, 0.99);
-
-for (let i = 0; i < numExecucoes; i++) {
-  const inicio = Date.now();
-  const resultado = sa.resolver();
-  const fim = Date.now();
-
-  const tempoExecucao = fim - inicio;
-
-  resultados.push(resultado);
-  temposExecucao.push(tempoExecucao);
-  iteracoesNecessarias.push(resultado.iteracoes);
+  return tabuleiro;
 }
 
-const mediaIteracoes = calcularMedia(iteracoesNecessarias);
-const desvioPadraoIteracoes = calcularDesvioPadrao(iteracoesNecessarias, mediaIteracoes);
+function calcularConflitos(tabuleiro) {
+  let conflitos = 0;
 
-const mediaTempoExecucao = calcularMedia(temposExecucao);
-const desvioPadraoTempoExecucao = calcularDesvioPadrao(temposExecucao, mediaTempoExecucao);
+  for (let i = 0; i < 8; i++) {
+      for (let j = i + 1; j < 8; j++) {
+          if (tabuleiro[i] === tabuleiro[j] || Math.abs(tabuleiro[i] - tabuleiro[j]) === j - i) {
+              conflitos++;
+          }
+      }
+  }
+  return conflitos;
+}
 
-const melhoresResultados = resultados
-  .sort((a, b) => calcularConflitos(a.tabuleiro) - calcularConflitos(b.tabuleiro))
-  .slice(0, 5);
+function gerarVizinho(tabuleiro) {
+  const novoTabuleiro = tabuleiro.slice();
+  const coluna = Math.floor(Math.random() * 8);
+  const novaLinha = Math.floor(Math.random() * 8);
+  novoTabuleiro[coluna] = novaLinha;
+  return novoTabuleiro;
+}
 
-// Exibe os resultados
-console.log("Média de iterações necessárias:", mediaIteracoes);
-console.log("Desvio padrão das iterações necessárias:", desvioPadraoIteracoes);
-console.log("Média do tempo de execução (ms):", mediaTempoExecucao);
-console.log("Desvio padrão do tempo de execução (ms):", desvioPadraoTempoExecucao);
-console.log("5 Melhores resultados:");
-melhoresResultados.forEach(resultado => {
-  mostrarTabuleiro(resultado.tabuleiro, resultado.iteracoes);
-  console.log();
-})
-  
+function subirColinaEstocastico() {
+  let estadoAtual = gerarTabuleiroAleatorio();
+  let conflitosAtuais = calcularConflitos(estadoAtual);
+  const MAX_ITERATIONS = 500;
+  let iterations = 0;
+
+  while (conflitosAtuais > 0) {
+      if (iterations >= MAX_ITERATIONS) {
+          break;
+      }
+      const novoEstado = gerarVizinho(estadoAtual);
+      const novosConflitos = calcularConflitos(novoEstado);
+
+      if (novosConflitos < conflitosAtuais) {
+          estadoAtual = novoEstado;
+          conflitosAtuais = novosConflitos;
+          iterations = 0;
+      }
+      iterations++;
+  }
+
+  return {
+      solucao: estadoAtual,
+      iterations,
+  };
+}
+
+function calcularMedia(valores) {
+  const soma = valores.reduce((acc, val) => acc + val, 0);
+  return soma / valores.length;
+}
+
+function calcularDesvioPadrao(valores, media) {
+  const variancia = valores.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / valores.length;
+  return Math.sqrt(variancia);
+}
+
+const solutions = [];
+
+for (let i = 0; i < 50; i++) {
+  const inicio = performance.now();
+  const { solucao, iterations } = subirColinaEstocastico();
+  const fim = performance.now();
+  const tempo = fim - inicio;
+  const conflitos = calcularConflitos(solucao);
+
+  solutions.push({ solucao, tempo, conflitos, iterations });
+}
+
+const bestSolutions = solutions.sort((a, b) => a.conflitos - b.conflitos).slice(0, 5);
+
+console.log('Melhores soluções: ', bestSolutions);
+console.log('Média de conflitos: ', calcularMedia(solutions.map(s => s.conflitos)));
+console.log('Desvio padrão de conflitos: ', calcularDesvioPadrao(solutions.map(s => s.conflitos), calcularMedia(solutions.map(s => s.conflitos))));
+console.log('Média de tempo (ms): ', calcularMedia(solutions.map(s => s.tempo)));
+console.log('Desvio padrão de tempo (ms): ', calcularDesvioPadrao(solutions.map(s => s.tempo), calcularMedia(solutions.map(s => s.tempo))));
+console.log('Média de iterações: ', calcularMedia(solutions.map(s => s.iterations)));
+console.log('Desvio padrão de iterações: ', calcularDesvioPadrao(solutions.map(s => s.iterations), calcularMedia(solutions.map(s => s.iterations))));
