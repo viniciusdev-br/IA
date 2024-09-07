@@ -1,112 +1,93 @@
 import { calcularConflitos, mostrarTabuleiro, calcularDesvioPadrao, calcularMedia } from "./util.js";
 
-class AlgoritmoGenetico {
-  constructor(maxPopulacao, taxaCruzamento, taxaMutacao, maxGeracoes) {
-    this.maxPopulacao = maxPopulacao;
-    this.taxaCruzamento = taxaCruzamento;
-    this.taxaMutacao = taxaMutacao;
-    this.maxGeracoes = maxGeracoes;
+const maxPopulacao = 20;
+const taxaCruzamento = 0.8;
+const taxaMutacao = 0.03;
+const maxGeracoes = 1000;
+const numExecucoes = 50;
 
-    this.populacao = [];
+function inicializarPopulacao() {
+  const populacao = [];
+  for (let i = 0; i < maxPopulacao; i++) {
+    populacao.push(Array.from({ length: 8 }, () => Math.floor(Math.random() * 8)));
   }
 
-  inicializarPopulacao() {
-    const populacao = [];
-    for (let i = 0; i < this.maxPopulacao; i++) {
-      populacao.push(Array.from({ length: 8 }, () => Math.floor(Math.random() * 8)));
-    }
-
-    this.populacao = populacao;
-  }
-
-  funcaoAptitude(individuo) {
-    return calcularConflitos(individuo);
-  }
-
-  cruzamento(pai1, pai2) {
-    const corte = Math.floor(Math.random() * 8);
-
-    const individuo = [...pai1.slice(0, corte), ...pai2.slice(corte, 8)];
-    return individuo
-  }
-
-  mutacao(individuo) {
-    const gene = Math.floor(Math.random() * 8);
-    const mutacao = Math.floor(Math.random() * (8 - 1) + 1);
-    individuo[gene] = individuo[gene] ^ mutacao;
-    return individuo;
-  }
-
-  resolver() {
-    this.inicializarPopulacao();
-    let geracao = 0;
-
-    while (geracao < this.maxGeracoes && this.funcaoAptitude(this.populacao[0]) !== 0) {
-      const novaPopulacao = [...this.populacao];
-
-      this.populacao.forEach((individuo) => {
-        let novoIndividuo = []
-        if (Math.random() < this.taxaCruzamento) {
-          const pai1 = individuo;
-          const pai2 = this.populacao[Math.floor(Math.random() * this.maxPopulacao)];
-          novoIndividuo = this.cruzamento(pai1, pai2);
-        }
-
-        if (Math.random() < this.taxaMutacao) {
-          novoIndividuo = this.mutacao(novoIndividuo);
-        }
-
-        if (novoIndividuo.length > 0) {
-          novaPopulacao.push(novoIndividuo);
-        }
-      })
-      
-      novaPopulacao.sort((a, b) => this.funcaoAptitude(a) - this.funcaoAptitude(b));
-      this.populacao = novaPopulacao.slice(0, this.maxPopulacao);
-      geracao++;
-    }
-
-    return { tabuleiro: this.populacao[0], iteracoes: geracao };
-  }
+  return populacao;
 }
 
-const numExecucoes = 50;
-const resultados = [];
-const temposExecucao = [];
-const iteracoesNecessarias = [];
+function funcaoAptitude(individuo) {
+  return calcularConflitos(individuo);
+}
 
-const sa = new AlgoritmoGenetico(20, 0.8, 0.03, 1000);
+function cruzamento(pai1, pai2) {
+  const corte = Math.floor(Math.random() * 8);
+
+  const individuo = [...pai1.slice(0, corte), ...pai2.slice(corte, 8)];
+  return individuo
+}
+
+function mutacao(individuo) {
+  const gene = Math.floor(Math.random() * 8);
+  const mutacao = Math.floor(Math.random() * (8 - 1) + 1);
+  individuo[gene] = individuo[gene] ^ mutacao;
+  return individuo;
+}
+
+function algoritmoGenetico() {
+  let populacao = inicializarPopulacao();
+  let geracao = 0;
+
+  while (geracao < maxGeracoes && funcaoAptitude(populacao[0]) !== 0) {
+    const novaPopulacao = [...populacao];
+
+    populacao.forEach((individuo) => {
+      let novoIndividuo = []
+      if (Math.random() < taxaCruzamento) {
+        const pai1 = individuo;
+        const pai2 = populacao[Math.floor(Math.random() * maxPopulacao)];
+        novoIndividuo = cruzamento(pai1, pai2);
+      }
+
+      if (Math.random() < taxaMutacao) {
+        novoIndividuo = mutacao(novoIndividuo);
+      }
+
+      if (novoIndividuo.length > 0) {
+        novaPopulacao.push(novoIndividuo);
+      }
+    })
+    
+    novaPopulacao.sort((a, b) => funcaoAptitude(a) - funcaoAptitude(b));
+    populacao = novaPopulacao.slice(0, maxPopulacao);
+    geracao++;
+  }
+
+  return {
+    solucao: populacao[0].map(tabuleiro => {
+      return tabuleiro.toString(2).padStart(3, '0');
+    }), 
+    iterations: geracao 
+  };
+}
+
+const solutions = [];
 
 for (let i = 0; i < numExecucoes; i++) {
-  const inicio = Date.now();
-  const resultado = sa.resolver();
-  const fim = Date.now();
+  const inicio = performance.now();
+  const { solucao, iterations } = algoritmoGenetico();
+  const fim = performance.now();
+  const tempo = fim - inicio;
+  const conflitos = calcularConflitos(solucao);
 
-  const tempoExecucao = fim - inicio;
-
-  resultados.push(resultado);
-  temposExecucao.push(tempoExecucao);
-  iteracoesNecessarias.push(resultado.iteracoes);
+  solutions.push({ solucao, tempo, conflitos, iterations });
 }
 
-const mediaIteracoes = calcularMedia(iteracoesNecessarias);
-const desvioPadraoIteracoes = calcularDesvioPadrao(iteracoesNecessarias, mediaIteracoes);
+const bestSolutions = solutions.sort((a, b) => a.conflitos - b.conflitos).slice(0, 5);
 
-const mediaTempoExecucao = calcularMedia(temposExecucao);
-const desvioPadraoTempoExecucao = calcularDesvioPadrao(temposExecucao, mediaTempoExecucao);
-
-const melhoresResultados = resultados
-  .sort((a, b) => sa.funcaoAptitude(a.tabuleiro) - sa.funcaoAptitude(b.tabuleiro))
-  .slice(0, 5)
-  .sort((a, b) => a.iteracoes - b.iteracoes);
-
-// Exibe os resultados
-console.log("Média de iterações necessárias:", mediaIteracoes);
-console.log("Desvio padrão das iterações necessárias:", desvioPadraoIteracoes);
-console.log("Média do tempo de execução (ms):", mediaTempoExecucao);
-console.log("Desvio padrão do tempo de execução (ms):", desvioPadraoTempoExecucao);
-console.log("5 Melhores resultados:");
-melhoresResultados.forEach(resultado => {
-  mostrarTabuleiro(resultado.tabuleiro, resultado.iteracoes);
-  console.log();
-})
+console.log('Melhores soluções: ', bestSolutions);
+console.log('Média de conflitos: ', calcularMedia(solutions.map(s => s.conflitos)));
+console.log('Desvio padrão de conflitos: ', calcularDesvioPadrao(solutions.map(s => s.conflitos), calcularMedia(solutions.map(s => s.conflitos))));
+console.log('Média de tempo (ms): ', calcularMedia(solutions.map(s => s.tempo)));
+console.log('Desvio padrão de tempo (ms): ', calcularDesvioPadrao(solutions.map(s => s.tempo), calcularMedia(solutions.map(s => s.tempo))));
+console.log('Média de iterações: ', calcularMedia(solutions.map(s => s.iterations)));
+console.log('Desvio padrão de iterações: ', calcularDesvioPadrao(solutions.map(s => s.iterations), calcularMedia(solutions.map(s => s.iterations))));
