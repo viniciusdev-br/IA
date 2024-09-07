@@ -82,3 +82,5 @@ console.log('Média de conflitos: ', calcularMedia(solutions.map(s => s.conflito
 console.log('Desvio padrão de conflitos: ', calcularDesvioPadrao(solutions.map(s => s.conflitos), calcularMedia(solutions.map(s => s.conflitos))));
 console.log('Média de tempo (ms): ', calcularMedia(solutions.map(s => s.tempo)));
 console.log('Desvio padrão de tempo (ms): ', calcularDesvioPadrao(solutions.map(s => s.tempo), calcularMedia(solutions.map(s => s.tempo))));
+console.log('Média de iterações: ', calcularMedia(solutions.map(s => s.iterations)));
+console.log('Desvio padrão de iterações: ', calcularDesvioPadrao(solutions.map(s => s.iterations), calcularMedia(solutions.map(s => s.iterations))));
